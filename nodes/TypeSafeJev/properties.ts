@@ -5,7 +5,7 @@ import { DEFAULT_MODEL } from './transport';
 /**
  * Note: entries inside `fixedCollection` value lists are ordered alphabetically
  * by `displayName` to satisfy n8n's linter, not for readability. Do not run
- * `n8n-node lint --fix` over this file — its autofixer reorders these entries by
+ * `n8n-node lint --fix` over this file. Its autofixer reorders these entries by
  * rebuilding them and silently drops `displayOptions` and `typeOptions`, which
  * collapses the per-type question form into a flat one.
  */
@@ -219,7 +219,7 @@ export const typeSafeJevProperties: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		description:
-			'Whether to reduce each answer to its primary value — the chosen label, the yes probability, or the expected score — instead of the full object',
+			'Whether to reduce each answer to its primary value (the chosen label, the yes probability, or the expected score) instead of the full object',
 	},
 	{
 		displayName: 'Options',

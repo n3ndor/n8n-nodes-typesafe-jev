@@ -38,4 +38,4 @@ if (missing.length > 0) {
 	process.exit(1);
 }
 
-console.log(`dist verified — ${required.length} registered entr${required.length === 1 ? 'y' : 'ies'} present.`);
+console.log(`dist verified: ${required.length} registered entr${required.length === 1 ? 'y' : 'ies'} present.`);

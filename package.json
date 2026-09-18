@@ -1,7 +1,7 @@
 {
 	"name": "n8n-nodes-typesafe-jev",
 	"version": "0.2.0",
-	"description": "n8n community node for TypeSafe Jev — typed, calibrated decisions for classification, routing and scoring",
+	"description": "n8n community node for TypeSafe Jev: typed, calibrated decisions for classification, routing and scoring",
 	"license": "MIT",
 	"keywords": [
 		"n8n-community-node-package",

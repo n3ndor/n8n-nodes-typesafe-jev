@@ -77,7 +77,7 @@ function toApiError(
 		requestId ? `TypeSafe request ID: ${requestId}` : undefined,
 	]
 		.filter(Boolean)
-		.join(' — ');
+		.join('. ');
 
 	return new NodeApiError(context.getNode(), error as JsonObject, {
 		message: status ? `TypeSafe API returned ${status}` : 'TypeSafe API request failed',

@@ -1,5 +1,5 @@
 {
-	"name": "TypeSafe Jev — ticket triage smoke test",
+	"name": "TypeSafe Jev ticket triage smoke test",
 	"nodes": [
 		{
 			"parameters": {},
@@ -14,7 +14,7 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "// Three tickets that should land on clearly different answers.\nreturn [\n  {\n    json: {\n      id: 'T-1',\n      tier: 'pro',\n      body: 'I was charged twice this month and nobody has replied in three days. Fix this today.',\n    },\n  },\n  {\n    json: {\n      id: 'T-2',\n      tier: 'free',\n      body: 'Hi! Quick question — does the export support CSV as well as JSON? No rush at all.',\n    },\n  },\n  {\n    json: {\n      id: 'T-3',\n      tier: 'enterprise',\n      body: 'The webhook integration returns 500 on every delivery since your last release.',\n    },\n  },\n];"
+				"jsCode": "// Three tickets that should land on clearly different answers.\nreturn [\n  {\n    json: {\n      id: 'T-1',\n      tier: 'pro',\n      body: 'I was charged twice this month and nobody has replied in three days. Fix this today.',\n    },\n  },\n  {\n    json: {\n      id: 'T-2',\n      tier: 'free',\n      body: 'Hi! Quick question, does the export support CSV as well as JSON? No rush at all.',\n    },\n  },\n  {\n    json: {\n      id: 'T-3',\n      tier: 'enterprise',\n      body: 'The webhook integration returns 500 on every delivery since your last release.',\n    },\n  },\n];"
 			},
 			"id": "a1000000-0000-4000-8000-000000000002",
 			"name": "Sample Tickets",
