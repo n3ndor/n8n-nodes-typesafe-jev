@@ -1,0 +1,64 @@
+# Publishes this n8n community node package to npm on every version tag push.
+#
+# Since May 1 2026, n8n requires all community nodes to be published via GitHub
+# Actions with npm provenance statements. Provenance lets anyone cryptographically
+# verify that a package was built by this exact workflow, from this exact
+# repository and commit. Local `npm publish` will not satisfy verification.
+#
+# ONE-TIME SETUP — Option A, OIDC Trusted Publishing (recommended):
+#   1. On npmjs.com open the package settings.
+#   2. "Publish access" -> "Trusted Publishers" -> "Add a publisher".
+#   3. Select GitHub Actions and fill in:
+#        Repository owner: n3ndor
+#        Repository name:  n8n-nodes-typesafe-jev
+#        Workflow name:    publish.yml
+#        Environment:      (leave blank)
+#   4. Leave the NPM_TOKEN secret unset — GitHub's OIDC token is used instead.
+#
+# ONE-TIME SETUP — Option B, npm Granular Access Token (fallback):
+#   1. npmjs.com -> Access Tokens -> Generate New Token -> Granular Access Token,
+#      scoped to this package with "Read and write" publish permission.
+#   2. GitHub -> Settings -> Secrets and variables -> Actions -> New secret,
+#      named NPM_TOKEN.
+#
+# RELEASE: run `pnpm run release` locally. It lints, builds, prompts for a
+# version bump, updates the changelog, commits, tags and pushes — which
+# triggers this workflow.
+
+name: Publish
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Required to mint an OIDC token for npm provenance attestation.
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Release
+        run: |
+          [ -n "$NPM_TOKEN" ] && npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+          pnpm run release
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

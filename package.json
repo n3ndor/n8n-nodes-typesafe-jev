@@ -1,64 +1,66 @@
 {
-  "name": "n8n-nodes-typesafe-jev",
-  "version": "0.1.0",
-  "description": "n8n community node for TypeSafe Jev System One structured decisions",
-  "license": "MIT",
-  "keywords": [
-    "n8n-community-node-package",
-    "n8n",
-    "typesafe",
-    "jev",
-    "system-one",
-    "ai"
-  ],
-  "homepage": "https://github.com/n3ndor/n8n-nodes-typesafe-jev#readme",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/n3ndor/n8n-nodes-typesafe-jev.git"
-  },
-  "bugs": {
-    "url": "https://github.com/n3ndor/n8n-nodes-typesafe-jev/issues"
-  },
-  "author": "TypeSafe Jev n8n Community Contributors",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
-  "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/copy-assets.cjs",
-    "dev": "tsc -p tsconfig.json --watch",
-    "lint": "tsc -p tsconfig.json --noEmit",
-    "format": "prettier --write \"{nodes,credentials,test}/**/*.ts\" \"*.{json,md}\"",
-    "format:check": "prettier --check \"{nodes,credentials,test}/**/*.ts\" \"*.{json,md}\"",
-    "test": "vitest run",
-    "prepublishOnly": "npm run build && npm run test"
-  },
-  "n8n": {
-    "n8nNodesApiVersion": 1,
-    "credentials": [
-      "dist/credentials/TypeSafeApi.credentials.js"
-    ],
-    "nodes": [
-      "dist/nodes/TypeSafeJev/TypeSafeJev.node.js"
-    ]
-  },
-  "engines": {
-    "node": ">=20.15"
-  },
-  "peerDependencies": {
-    "n8n-workflow": "^1.0.0"
-  },
-  "dependencies": {
-    "@typesafe-ai/sdk": "^0.6.0"
-  },
-  "devDependencies": {
-    "@types/node": "^22.0.0",
-    "eslint": "^9.0.0",
-    "eslint-config-prettier": "^10.0.0",
-    "n8n-workflow": "^1.0.0",
-    "prettier": "^3.0.0",
-    "typescript": "^5.7.0",
-    "vitest": "^3.0.0"
-  }
+	"name": "n8n-nodes-typesafe-jev",
+	"version": "0.2.0",
+	"description": "n8n community node for TypeSafe Jev — typed, calibrated decisions for classification, routing and scoring",
+	"license": "MIT",
+	"keywords": [
+		"n8n-community-node-package",
+		"n8n",
+		"typesafe",
+		"jev",
+		"classification",
+		"ai"
+	],
+	"homepage": "https://github.com/n3ndor/n8n-nodes-typesafe-jev#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/n3ndor/n8n-nodes-typesafe-jev.git"
+	},
+	"bugs": {
+		"url": "https://github.com/n3ndor/n8n-nodes-typesafe-jev/issues"
+	},
+	"author": {
+		"name": "Nandor",
+		"email": "nandor@creatorlinkup.de"
+	},
+	"scripts": {
+		"build": "n8n-node build",
+		"build:watch": "tsc --watch",
+		"dev": "n8n-node dev",
+		"lint": "n8n-node lint",
+		"lint:fix": "n8n-node lint --fix",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"release": "n8n-node release",
+		"prepublishOnly": "n8n-node prerelease"
+	},
+	"files": [
+		"dist"
+	],
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"strict": true,
+		"credentials": [
+			"dist/credentials/TypeSafeApi.credentials.js"
+		],
+		"nodes": [
+			"dist/nodes/TypeSafeJev/TypeSafeJev.node.js"
+		]
+	},
+	"engines": {
+		"node": ">=20.15"
+	},
+	"peerDependencies": {
+		"n8n-workflow": "*"
+	},
+	"devDependencies": {
+		"@n8n/node-cli": "^0.48.5",
+		"@types/node": "^22.0.0",
+		"eslint": "^9.39.0",
+		"n8n-workflow": "*",
+		"prettier": "^3.8.0",
+		"release-it": "^20.2.0",
+		"typescript": "^5.9.3",
+		"vitest": "^3.0.0"
+	}
 }

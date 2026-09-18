@@ -1,5 +1,6 @@
-node_modules/
-dist/
+dist
+node_modules
 *.tgz
 .env
 .n8n/
+*.tsbuildinfo
