@@ -116,6 +116,8 @@ TYPESAFE_API_KEY=sk-your-key node scripts/verify-api.mjs
 
 See [VERIFICATION.md](VERIFICATION.md) for the full first-run checklist and [examples/ticket-triage.workflow.json](examples/ticket-triage.workflow.json) for an importable workflow that exercises both input modes.
 
+While running `pnpm run dev`, n8n loads the node from disk and registers it as `CUSTOM.typeSafeJev` rather than `n8n-nodes-typesafe-jev.typeSafeJev`. Import [examples/ticket-triage.dev.workflow.json](examples/ticket-triage.dev.workflow.json) in that mode, regenerated with `node scripts/dev-workflow.mjs`, otherwise n8n reports `Unrecognized node type`. Settings, Community Nodes, Install does not apply to a local dev node either; it installs from npm.
+
 > Do not run `pnpm run lint --fix` over `nodes/TypeSafeJev/properties.ts`. Its fixer reorders fixed-collection entries by rebuilding them, and silently drops `displayOptions` and `typeOptions` in the process, which flattens the per-type question form.
 
 ## License

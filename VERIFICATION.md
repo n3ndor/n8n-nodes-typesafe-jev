@@ -58,9 +58,28 @@ pnpm run dev
 This starts a local n8n with the node symlinked in, using `~/.n8n-node-cli` as an isolated user folder so it does not touch existing n8n data. The first run downloads n8n in full, which takes several minutes. Let it finish. Killing it partway leaves a half-written package in the npm cache, and the next run then fails with `Cannot find module '../package.json'`; recover by deleting the matching folder under `~/AppData/Local/npm-cache/_npx/`.
 
 1. Create a **TypeSafe API** credential, paste the key, press **Test**. It should go green — that exercises `authenticate` and `test` together.
-2. Import `examples/ticket-triage.workflow.json`.
-3. Set the credential on both Jev nodes (they import with a `REPLACE_ME` placeholder).
+2. Import **`examples/ticket-triage.dev.workflow.json`**, not the plain one. See the note below.
+3. Set the credential on both Jev nodes.
 4. Execute.
+
+### Do not use the npm-named workflow in dev
+
+n8n registers a node under a different type name depending on how it was loaded:
+
+| Loaded via | Registered type |
+| --- | --- |
+| npm install, which is what real users do | `n8n-nodes-typesafe-jev.typeSafeJev` |
+| `pnpm run dev`, from the `custom/` folder | `CUSTOM.typeSafeJev` |
+
+`CustomDirectoryLoader` hardcodes its package name to `CUSTOM`, so a workflow exported from one mode will not resolve in the other. It fails with `Unrecognized node type`, which looks exactly like the node failing to load even though it loaded fine.
+
+`examples/ticket-triage.workflow.json` is canonical and uses the npm name. Regenerate the dev copy after editing it:
+
+```bash
+node scripts/dev-workflow.mjs
+```
+
+Also note that **Settings → Community Nodes → Install** cannot be used during development. It installs from npm and will fail with `Package version does not exist` until the package is published. Dev nodes load from disk instead, with no install step. Find it by pressing Tab on the canvas and searching `TypeSafe`.
 
 The workflow runs three sample tickets through **both** input modes at once:
 
