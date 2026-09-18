@@ -35,12 +35,27 @@ Assumptions 3, 5 and 8 are the ones most likely to be wrong, and all three are c
 
 ## 2. Run it inside n8n
 
+`n8n-node dev` pulls `n8n@latest`, and n8n 2.x requires **Node 24 or newer**. On an older Node the install fails rather than warning clearly. Check first:
+
+```bash
+node -v
+```
+
+If it is below 24, switch before running dev (the node itself still builds and ships fine on Node 20.15+, this is only n8n's own requirement):
+
+```bash
+nvm install 24
+nvm use 24
+```
+
+Then:
+
 ```bash
 pnpm install
 pnpm run dev
 ```
 
-This starts a local n8n with the node linked.
+This starts a local n8n with the node symlinked in, using `~/.n8n-node-cli` as an isolated user folder so it does not touch existing n8n data. The first run downloads n8n in full, which takes several minutes. Let it finish. Killing it partway leaves a half-written package in the npm cache, and the next run then fails with `Cannot find module '../package.json'`; recover by deleting the matching folder under `~/AppData/Local/npm-cache/_npx/`.
 
 1. Create a **TypeSafe API** credential, paste the key, press **Test**. It should go green — that exercises `authenticate` and `test` together.
 2. Import `examples/ticket-triage.workflow.json`.
@@ -78,7 +93,6 @@ These are the things unit tests cannot see:
 
 ## 4. Releasing
 
-- [ ] Pin `n8n-workflow` to the major the lint plugin wants (`@n8n/eslint-plugin-community-nodes` asks for `>=2`; pnpm currently resolves `1.120.31` from the `latest` tag). Lint passes either way, but submission should not rely on that.
 - [ ] `pnpm run release` to cut `0.2.0`. Publishing happens in CI with provenance, never from this machine.
 - [ ] Submit for verification once it has run against a real key for a while.
 
