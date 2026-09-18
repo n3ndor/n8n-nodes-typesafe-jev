@@ -108,6 +108,14 @@ pnpm run build
 
 `pnpm run dev` starts a local n8n with the node linked. `pnpm run release` bumps the version, tags and pushes, which triggers the publish workflow — releases go out from GitHub Actions with npm provenance, never from a local machine.
 
+To check the live API against every assumption this node makes:
+
+```bash
+TYPESAFE_API_KEY=sk-your-key node scripts/verify-api.mjs
+```
+
+See [VERIFICATION.md](VERIFICATION.md) for the full first-run checklist and [examples/ticket-triage.workflow.json](examples/ticket-triage.workflow.json) for an importable workflow that exercises both input modes.
+
 > Do not run `pnpm run lint --fix` over `nodes/TypeSafeJev/properties.ts`. Its fixer reorders fixed-collection entries by rebuilding them, and silently drops `displayOptions` and `typeOptions` in the process, which flattens the per-type question form.
 
 ## License

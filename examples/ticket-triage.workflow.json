@@ -1,0 +1,119 @@
+{
+	"name": "TypeSafe Jev — ticket triage smoke test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "a1000000-0000-4000-8000-000000000001",
+			"name": "When clicking Execute",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Three tickets that should land on clearly different answers.\nreturn [\n  {\n    json: {\n      id: 'T-1',\n      tier: 'pro',\n      body: 'I was charged twice this month and nobody has replied in three days. Fix this today.',\n    },\n  },\n  {\n    json: {\n      id: 'T-2',\n      tier: 'free',\n      body: 'Hi! Quick question — does the export support CSV as well as JSON? No rush at all.',\n    },\n  },\n  {\n    json: {\n      id: 'T-3',\n      tier: 'enterprise',\n      body: 'The webhook integration returns 500 on every delivery since your last release.',\n    },\n  },\n];"
+			},
+			"id": "a1000000-0000-4000-8000-000000000002",
+			"name": "Sample Tickets",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [220, 0]
+		},
+		{
+			"parameters": {
+				"model": "jev-latest",
+				"state": "={{ $json.body }}",
+				"questionInput": "builder",
+				"questions": {
+					"questionValues": [
+						{
+							"name": "intent",
+							"type": "choice",
+							"instructions": "What is the customer's primary request?",
+							"choiceCriteria": {
+								"values": [
+									{ "label": "refund", "description": "The customer wants money returned." },
+									{
+										"label": "technical_help",
+										"description": "The customer needs a product or integration fixed."
+									},
+									{ "label": "information", "description": "The customer is asking a question." }
+								]
+							}
+						},
+						{
+							"name": "urgent",
+							"type": "noul",
+							"instructions": "Does the customer explicitly convey time pressure?",
+							"noulTrue": "They ask for immediate, urgent or time-bound action.",
+							"noulFalse": "They do not convey time pressure."
+						},
+						{
+							"name": "frustration",
+							"type": "score",
+							"instructions": "How frustrated is the customer?",
+							"scoreCriteria": [
+								"Calm or neutral",
+								"Concerned but civil",
+								"Very angry or strongly negative"
+							]
+						}
+					]
+				},
+				"output": "append",
+				"simplify": false,
+				"options": {
+					"includeRequestId": true
+				}
+			},
+			"id": "a1000000-0000-4000-8000-000000000003",
+			"name": "Jev (Question Builder)",
+			"type": "n8n-nodes-typesafe-jev.typeSafeJev",
+			"typeVersion": 1,
+			"position": [460, -120],
+			"credentials": {
+				"typeSafeApi": {
+					"id": "REPLACE_ME",
+					"name": "TypeSafe API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"model": "jev-latest",
+				"state": "={{ $json }}",
+				"questionInput": "json",
+				"questionsJson": "{\n  \"intent\": {\n    \"type\": \"choice\",\n    \"instructions\": \"What is the customer's primary request?\",\n    \"criteria\": {\n      \"refund\": \"The customer wants money returned.\",\n      \"technical_help\": \"The customer needs a product or integration fixed.\",\n      \"information\": \"The customer is asking a question.\"\n    }\n  },\n  \"urgent\": {\n    \"type\": \"noul\",\n    \"instructions\": \"Does the customer explicitly convey time pressure?\"\n  },\n  \"frustration\": {\n    \"type\": \"score\",\n    \"instructions\": \"How frustrated is the customer?\",\n    \"criteria\": [\"Calm or neutral\", \"Concerned but civil\", \"Very angry or strongly negative\"]\n  }\n}",
+				"output": "answersOnly",
+				"simplify": true,
+				"options": {}
+			},
+			"id": "a1000000-0000-4000-8000-000000000004",
+			"name": "Jev (JSON, Simplified)",
+			"type": "n8n-nodes-typesafe-jev.typeSafeJev",
+			"typeVersion": 1,
+			"position": [460, 120],
+			"credentials": {
+				"typeSafeApi": {
+					"id": "REPLACE_ME",
+					"name": "TypeSafe API"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking Execute": {
+			"main": [[{ "node": "Sample Tickets", "type": "main", "index": 0 }]]
+		},
+		"Sample Tickets": {
+			"main": [
+				[
+					{ "node": "Jev (Question Builder)", "type": "main", "index": 0 },
+					{ "node": "Jev (JSON, Simplified)", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"settings": { "executionOrder": "v1" }
+}
