@@ -11,13 +11,13 @@
     "system-one",
     "ai"
   ],
-  "homepage": "https://github.com/your-org/n8n-nodes-typesafe-jev#readme",
+  "homepage": "https://github.com/n3ndor/n8n-nodes-typesafe-jev#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-org/n8n-nodes-typesafe-jev.git"
+    "url": "git+https://github.com/n3ndor/n8n-nodes-typesafe-jev.git"
   },
   "bugs": {
-    "url": "https://github.com/your-org/n8n-nodes-typesafe-jev/issues"
+    "url": "https://github.com/n3ndor/n8n-nodes-typesafe-jev/issues"
   },
   "author": "TypeSafe Jev n8n Community Contributors",
   "main": "dist/index.js",
