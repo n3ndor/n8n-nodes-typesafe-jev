@@ -77,6 +77,21 @@ Expected shape from the simplified node:
 
 ---
 
+### Confirming the package loads, without logging in
+
+n8n's REST and `/types/nodes.json` endpoints need an authenticated session, so checking registration normally means creating an owner account first. You can skip that by running the loader n8n itself uses at startup, from any directory that has n8n installed:
+
+```js
+const { PackageDirectoryLoader } = require('n8n-core');
+const loader = new PackageDirectoryLoader('D:/Programmierung/PROJECTS/n8n-nodes-typesafe-jev');
+await loader.loadAll();
+console.log(loader.loadedNodes, loader.types.credentials.map((c) => c.name));
+```
+
+Last run against n8n 2.39.8 reported `typeSafeJev v1`, credential `typeSafeApi`, the codex categories, `usableAsTool: true`, and the per-type `displayOptions` intact. If the package were malformed, this throws where n8n would otherwise fail silently at startup.
+
+One Windows-only artifact: the loader builds `iconUrl` with `path.join`, so locally it comes out as `dist\nodes\...\typesafeJev.svg` with backslashes and the icon may not render in a local dev instance. That is n8n's path handling on Windows, not a fault in the package, and it does not occur on a Linux or Docker host.
+
 ## 3. Spot-check the UI
 
 These are the things unit tests cannot see:
@@ -95,6 +110,16 @@ These are the things unit tests cannot see:
 
 - [ ] `pnpm run release` to cut `0.2.0`. Publishing happens in CI with provenance, never from this machine.
 - [ ] Submit for verification once it has run against a real key for a while.
+
+Verification is becoming load-bearing rather than cosmetic. n8n 2.39.8 emits this on startup:
+
+```
+N8N_UNVERIFIED_PACKAGES_ENABLED -> The default for this variable will change to
+`false` in a future version. Set it to `true` explicitly to keep installing
+unverified community packages.
+```
+
+Once that default flips, installing an unverified node stops being a click in the UI and becomes an environment-variable change on the n8n host. On someone else's instance that means involving whoever administers it. The three hard blockers for verification are already cleared: zero runtime dependencies, no environment reads, and provenance publishing from CI.
 
 ### The npm trusted publishing bootstrap
 
