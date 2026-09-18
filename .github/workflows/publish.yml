@@ -5,25 +5,36 @@
 # verify that a package was built by this exact workflow, from this exact
 # repository and commit. Local `npm publish` will not satisfy verification.
 #
-# ONE-TIME SETUP — Option A, OIDC Trusted Publishing (recommended):
-#   1. On npmjs.com open the package settings.
-#   2. "Publish access" -> "Trusted Publishers" -> "Add a publisher".
-#   3. Select GitHub Actions and fill in:
+# IMPORTANT: npm can only configure a Trusted Publisher on a package that
+# ALREADY EXISTS in the registry. There is no "pending" trusted publisher, so a
+# brand new package cannot use OIDC for its first publish. The first release has
+# to be authenticated with a token; OIDC takes over from the second one.
+#
+# STEP 1, first publish only, granular access token:
+#   1. npmjs.com -> Access Tokens -> Generate New Token -> Granular Access Token.
+#      Packages and scopes: "Only select packages and scopes" is not available
+#      for a name that does not exist yet, so scope it to your user account with
+#      "Read and write". Set a short expiry (1 to 7 days); it is thrown away in
+#      step 3.
+#   2. GitHub -> repo Settings -> Secrets and variables -> Actions -> New
+#      repository secret, named NPM_TOKEN.
+#   3. Push a version tag. This workflow publishes with provenance, because
+#      provenance comes from `id-token: write` below and works either way.
+#
+# STEP 2, immediately after that first publish, switch to OIDC:
+#   1. npmjs.com -> Packages -> n8n-nodes-typesafe-jev -> Settings.
+#   2. "Trusted publishing" -> "Add a publisher". Select GitHub Actions:
 #        Repository owner: n3ndor
 #        Repository name:  n8n-nodes-typesafe-jev
 #        Workflow name:    publish.yml
 #        Environment:      (leave blank)
-#   4. Leave the NPM_TOKEN secret unset — GitHub's OIDC token is used instead.
-#
-# ONE-TIME SETUP — Option B, npm Granular Access Token (fallback):
-#   1. npmjs.com -> Access Tokens -> Generate New Token -> Granular Access Token,
-#      scoped to this package with "Read and write" publish permission.
-#   2. GitHub -> Settings -> Secrets and variables -> Actions -> New secret,
-#      named NPM_TOKEN.
+#   3. DELETE the NPM_TOKEN secret from the GitHub repo, and revoke the token on
+#      npmjs.com. The step below skips the token path when NPM_TOKEN is unset
+#      and npm falls back to the OIDC exchange.
 #
 # RELEASE: run `pnpm run release` locally. It lints, builds, prompts for a
-# version bump, updates the changelog, commits, tags and pushes — which
-# triggers this workflow.
+# version bump, updates the changelog, commits, tags and pushes, which triggers
+# this workflow.
 
 name: Publish
 
