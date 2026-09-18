@@ -1,0 +1,64 @@
+{
+  "name": "n8n-nodes-typesafe-jev",
+  "version": "0.1.0",
+  "description": "n8n community node for TypeSafe Jev System One structured decisions",
+  "license": "MIT",
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "typesafe",
+    "jev",
+    "system-one",
+    "ai"
+  ],
+  "homepage": "https://github.com/your-org/n8n-nodes-typesafe-jev#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/n8n-nodes-typesafe-jev.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/n8n-nodes-typesafe-jev/issues"
+  },
+  "author": "TypeSafe Jev n8n Community Contributors",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/copy-assets.cjs",
+    "dev": "tsc -p tsconfig.json --watch",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "format": "prettier --write \"{nodes,credentials,test}/**/*.ts\" \"*.{json,md}\"",
+    "format:check": "prettier --check \"{nodes,credentials,test}/**/*.ts\" \"*.{json,md}\"",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build && npm run test"
+  },
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/TypeSafeApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/TypeSafeJev/TypeSafeJev.node.js"
+    ]
+  },
+  "engines": {
+    "node": ">=20.15"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "^1.0.0"
+  },
+  "dependencies": {
+    "@typesafe-ai/sdk": "^0.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^10.0.0",
+    "n8n-workflow": "^1.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}

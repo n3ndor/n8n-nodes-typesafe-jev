@@ -1,0 +1,5 @@
+node_modules/
+dist/
+*.tgz
+.env
+.n8n/
