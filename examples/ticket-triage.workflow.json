@@ -7,7 +7,10 @@
 			"name": "When clicking Execute",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [0, 0]
+			"position": [
+				0,
+				0
+			]
 		},
 		{
 			"parameters": {
@@ -17,7 +20,10 @@
 			"name": "Sample Tickets",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 2,
-			"position": [220, 0]
+			"position": [
+				220,
+				0
+			]
 		},
 		{
 			"parameters": {
@@ -32,12 +38,18 @@
 							"instructions": "What is the customer's primary request?",
 							"choiceCriteria": {
 								"values": [
-									{ "label": "refund", "description": "The customer wants money returned." },
+									{
+										"label": "refund",
+										"description": "The customer wants money returned."
+									},
 									{
 										"label": "technical_help",
 										"description": "The customer needs a product or integration fixed."
 									},
-									{ "label": "information", "description": "The customer is asking a question." }
+									{
+										"label": "information",
+										"description": "The customer is asking a question."
+									}
 								]
 							}
 						},
@@ -70,13 +82,10 @@
 			"name": "Jev (Question Builder)",
 			"type": "n8n-nodes-typesafe-jev.typeSafeJev",
 			"typeVersion": 1,
-			"position": [460, -120],
-			"credentials": {
-				"typeSafeApi": {
-					"id": "REPLACE_ME",
-					"name": "TypeSafe API"
-				}
-			}
+			"position": [
+				460,
+				-120
+			]
 		},
 		{
 			"parameters": {
@@ -92,28 +101,43 @@
 			"name": "Jev (JSON, Simplified)",
 			"type": "n8n-nodes-typesafe-jev.typeSafeJev",
 			"typeVersion": 1,
-			"position": [460, 120],
-			"credentials": {
-				"typeSafeApi": {
-					"id": "REPLACE_ME",
-					"name": "TypeSafe API"
-				}
-			}
+			"position": [
+				460,
+				120
+			]
 		}
 	],
 	"connections": {
 		"When clicking Execute": {
-			"main": [[{ "node": "Sample Tickets", "type": "main", "index": 0 }]]
+			"main": [
+				[
+					{
+						"node": "Sample Tickets",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		},
 		"Sample Tickets": {
 			"main": [
 				[
-					{ "node": "Jev (Question Builder)", "type": "main", "index": 0 },
-					{ "node": "Jev (JSON, Simplified)", "type": "main", "index": 0 }
+					{
+						"node": "Jev (Question Builder)",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Jev (JSON, Simplified)",
+						"type": "main",
+						"index": 0
+					}
 				]
 			]
 		}
 	},
 	"pinData": {},
-	"settings": { "executionOrder": "v1" }
+	"settings": {
+		"executionOrder": "v1"
+	}
 }
