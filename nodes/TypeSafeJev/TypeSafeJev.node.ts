@@ -1,167 +1,167 @@
-import { TypeSafeClient } from '@typesafe-ai/sdk';
 import {
 	NodeApiError,
+	NodeConnectionTypes,
+	NodeOperationError,
+	type IDataObject,
 	type IExecuteFunctions,
+	type ILoadOptionsFunctions,
 	type INodeExecutionData,
+	type INodePropertyOptions,
 	type INodeType,
 	type INodeTypeDescription,
-	type JsonObject,
 } from 'n8n-workflow';
 
-type QuestionType = 'choice' | 'noul' | 'score';
+import { typeSafeJevProperties } from './properties';
+import {
+	buildQuestions,
+	parseJsonParameter,
+	parseState,
+	validateQuestions,
+	type QuestionBuilderRow,
+} from './questions';
+import { CREDENTIAL_NAME, listModels, systemOne } from './transport';
+import type { Answer, Questions } from './types';
 
-interface BuiltQuestion {
-	type: QuestionType;
-	instructions?: unknown;
-	criteria?: unknown;
-}
+/**
+ * Programmatic rather than declarative: the questions schema is assembled from a
+ * nested fixed collection and validated before the call, which routing-based
+ * declarative nodes cannot express.
+ */
 
-function parseJson(value: unknown, fieldName: string): unknown {
-	if (typeof value !== 'string') return value;
-	try {
-		return JSON.parse(value);
-	} catch {
-		throw new Error(`${fieldName} must be valid JSON.`);
+/** Collapse an answer to the single value most workflows branch on. */
+function simplifyAnswer(answer: Answer): string | number {
+	switch (answer.type) {
+		case 'choice':
+			return answer.choice;
+		case 'noul':
+			return answer.noul;
+		case 'score':
+			return answer.score;
+		default:
+			return (answer as { type: string }).type;
 	}
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-/** Validate the dynamic question schema before sending it to the provider. */
-export function validateQuestions(value: unknown): Record<string, BuiltQuestion> {
-	if (!isPlainObject(value) || Object.keys(value).length === 0) {
-		throw new Error('Questions must be a non-empty JSON object keyed by question name.');
+function simplifyAnswers(answers: Record<string, Answer>): IDataObject {
+	const simplified: IDataObject = {};
+	for (const [name, answer] of Object.entries(answers)) {
+		simplified[name] = simplifyAnswer(answer);
 	}
-
-	for (const [name, question] of Object.entries(value)) {
-		if (!name.trim() || !isPlainObject(question)) {
-			throw new Error('Each question needs a non-empty name and an object value.');
-		}
-		if (!['choice', 'noul', 'score'].includes(String(question.type))) {
-			throw new Error(`Question "${name}" must have type choice, noul, or score.`);
-		}
-		if (question.type === 'choice' && (!isPlainObject(question.criteria) || Object.keys(question.criteria).length < 2)) {
-			throw new Error(`Choice question "${name}" needs at least two criteria labels.`);
-		}
-		if (question.type === 'score' && (!Array.isArray(question.criteria) || question.criteria.length < 2)) {
-			throw new Error(`Score question "${name}" needs a criteria array with at least two rubric levels.`);
-		}
-		if (question.type === 'noul' && question.criteria !== undefined && question.criteria !== null && !isPlainObject(question.criteria)) {
-			throw new Error(`Noul question "${name}" criteria must be an object when supplied.`);
-		}
-	}
-
-	return value as Record<string, BuiltQuestion>;
-}
-
-function buildQuestions(questionValues: Array<Record<string, unknown>>): Record<string, BuiltQuestion> {
-	const questions: Record<string, BuiltQuestion> = {};
-	for (const question of questionValues) {
-		const name = String(question.name ?? '').trim();
-		if (!name) throw new Error('Every question needs a unique question name.');
-		if (questions[name]) throw new Error(`Question name "${name}" is duplicated.`);
-		const type = question.type as QuestionType;
-		questions[name] = {
-			type,
-			instructions: question.instructions || undefined,
-			criteria: parseJson(question.criteria, `Criteria for "${name}"`),
-		};
-	}
-	return validateQuestions(questions);
+	return simplified;
 }
 
 export class TypeSafeJev implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TypeSafe Jev',
 		name: 'typeSafeJev',
-		icon: 'file:typesafeJev.svg',
+		icon: { light: 'file:typesafeJev.svg', dark: 'file:typesafeJev.dark.svg' },
 		group: ['transform'],
 		version: 1,
-		description: 'Make typed, calibrated decisions with TypeSafe Jev System One',
+		subtitle: '={{ $parameter["model"] }}',
+		description: 'Make typed, calibrated decisions with TypeSafe Jev',
 		defaults: { name: 'TypeSafe Jev' },
-		inputs: ['main'],
-		outputs: ['main'],
-		credentials: [{ name: 'typeSafeApi', required: true }],
-		properties: [
-			{
-				displayName: 'Model', name: 'model', type: 'string', default: 'jev-latest',
-				description: 'The TypeSafe model identifier',
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		credentials: [{ name: CREDENTIAL_NAME, required: true }],
+		properties: typeSafeJevProperties,
+	};
+
+	methods = {
+		loadOptions: {
+			async getModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const models = await listModels(this);
+				return models.map((model) => ({
+					name: model.name,
+					value: model.name,
+					description: model.description,
+				}));
 			},
-			{
-				displayName: 'State', name: 'state', type: 'json', default: '={{ $json }}', required: true,
-				description: 'Text, JSON object, JSON array, or expression containing the information Jev should assess',
-			},
-			{
-				displayName: 'Question Input', name: 'questionInput', type: 'options', default: 'builder',
-				options: [
-					{ name: 'Question Builder', value: 'builder' },
-					{ name: 'JSON', value: 'json' },
-				],
-				description: 'Choose a guided builder or supply the complete questions schema as JSON',
-			},
-			{
-				displayName: 'Questions', name: 'questions', type: 'fixedCollection', typeOptions: { multipleValues: true }, default: {},
-				displayOptions: { show: { questionInput: ['builder'] } },
-				options: [{
-					name: 'questionValues', displayName: 'Question', values: [
-						{ displayName: 'Name', name: 'name', type: 'string', default: '', required: true, description: 'Stable key used in the response answers object' },
-						{ displayName: 'Type', name: 'type', type: 'options', default: 'choice', options: [
-							{ name: 'Choice', value: 'choice', description: 'Choose one named option' },
-							{ name: 'Yes / No (Noul)', value: 'noul', description: 'Return the probability of yes' },
-							{ name: 'Score', value: 'score', description: 'Return an expected score over an ordered rubric' },
-						] },
-						{ displayName: 'Instructions', name: 'instructions', type: 'string', default: '', typeOptions: { rows: 3 }, description: 'Question given to Jev. Supports expressions.' },
-						{ displayName: 'Criteria (JSON)', name: 'criteria', type: 'json', default: '{}', required: true, description: 'Choice: object of label to description; Noul: optional true/false object; Score: array of ordered rubric descriptions. Supports expressions.' },
-					],
-				}],
-			},
-			{
-				displayName: 'Questions (JSON)', name: 'questionsJson', type: 'json', default: '{}', required: true,
-				displayOptions: { show: { questionInput: ['json'] } },
-				description: 'Questions keyed by name. Each value needs type, optional instructions, and criteria. Supports expressions.',
-			},
-			{
-				displayName: 'Output', name: 'output', type: 'options', default: 'append',
-				options: [
-					{ name: 'Append Result', value: 'append', description: 'Keep input fields and add typesafeJev' },
-					{ name: 'Result Only', value: 'resultOnly', description: 'Output only the TypeSafe response' },
-				],
-			},
-		],
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
-		const credentials = await this.getCredentials('typeSafeApi');
-		const apiKey = credentials.apiKey as string;
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				const model = this.getNodeParameter('model', itemIndex) as string;
-				const state = this.getNodeParameter('state', itemIndex);
+				const state = parseState(this.getNodeParameter('state', itemIndex));
 				const questionInput = this.getNodeParameter('questionInput', itemIndex) as string;
-				const questions = questionInput === 'json'
-					? validateQuestions(this.getNodeParameter('questionsJson', itemIndex))
-					: buildQuestions(((this.getNodeParameter('questions', itemIndex) as { questionValues?: Array<Record<string, unknown>> }).questionValues) ?? []);
-
-				const client = new TypeSafeClient({ apiKey });
-				const result = await client.systemOne({ model, state: state as never, questions: questions as never } as never);
 				const output = this.getNodeParameter('output', itemIndex) as string;
-				returnData.push({
-					json: (output === 'resultOnly' ? result : { ...items[itemIndex].json, typesafeJev: result }) as unknown as JsonObject,
-					pairedItem: { item: itemIndex },
-				});
+				const simplify = this.getNodeParameter('simplify', itemIndex) as boolean;
+				const options = this.getNodeParameter('options', itemIndex, {}) as {
+					includeRequestId?: boolean;
+					outputField?: string;
+					timeout?: number;
+				};
+
+				let questions: Questions;
+				try {
+					questions =
+						questionInput === 'json'
+							? validateQuestions(
+									parseJsonParameter(
+										this.getNodeParameter('questionsJson', itemIndex),
+										'Questions (JSON)',
+									),
+								)
+							: buildQuestions(
+									(
+										this.getNodeParameter('questions', itemIndex, {}) as {
+											questionValues?: QuestionBuilderRow[];
+										}
+									).questionValues ?? [],
+								);
+				} catch (error) {
+					// A bad schema is the user's configuration, not an API failure.
+					throw new NodeOperationError(this.getNode(), error as Error, { itemIndex });
+				}
+
+				const { data, requestId } = await systemOne(
+					this,
+					{ model, state, questions },
+					{ timeout: options.timeout, itemIndex },
+				);
+
+				const answers = simplify
+					? simplifyAnswers(data.answers)
+					: (data.answers as unknown as IDataObject);
+
+				let payload: IDataObject;
+				if (output === 'answersOnly') {
+					payload = answers;
+				} else {
+					payload = { model: data.model, answers, usage: data.usage as unknown as IDataObject };
+				}
+
+				if (options.includeRequestId && requestId) {
+					payload = { ...payload, requestId };
+				}
+
+				const json: IDataObject =
+					output === 'append'
+						? { ...items[itemIndex].json, [options.outputField ?? 'typesafeJev']: payload }
+						: payload;
+
+				returnData.push({ json, pairedItem: { item: itemIndex } });
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { ...items[itemIndex].json, error: error instanceof Error ? error.message : String(error) }, pairedItem: { item: itemIndex } });
+					returnData.push({
+						json: { ...items[itemIndex].json, error: (error as Error).message },
+						pairedItem: { item: itemIndex },
+					});
 					continue;
 				}
-				throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex });
+				// `systemOne` and the schema guard above already raise n8n errors;
+				// anything else reaching here is an operational fault.
+				throw error instanceof NodeApiError || error instanceof NodeOperationError
+					? error
+					: new NodeOperationError(this.getNode(), error as Error, { itemIndex });
 			}
 		}
+
 		return [returnData];
 	}
 }

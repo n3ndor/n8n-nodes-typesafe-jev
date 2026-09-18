@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-typesafe-jev.typeSafeJev",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["AI", "Utility"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://github.com/n3ndor/n8n-nodes-typesafe-jev?tab=readme-ov-file#credentials"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://github.com/n3ndor/n8n-nodes-typesafe-jev?tab=readme-ov-file"
+			}
+		]
+	}
+}
