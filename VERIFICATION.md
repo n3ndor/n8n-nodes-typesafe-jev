@@ -33,12 +33,12 @@ The assumptions it checks, in rough order of how much damage a mismatch would do
 | 4 | `answers` is keyed by our question names | README examples |
 | 5 | Answer shapes per type (`choice`/`noul`/`score`) | `types.ts`, `simplifyAnswer` |
 | 6 | `usage` is snake_case (`input_tokens`) | README |
-| 7 | `GET /v1/models` returns a bare array | `transport.ts`, `listModels` |
-| 8 | Errors expose `error.message` or `message` | `transport.ts`, `toApiError` |
+| 7 | `GET /v1/models` returns `{ models: [...] }` or a bare array | `transport.ts`, `listModels` |
+| 8 | Errors expose a message under `detail`, `error` or `message` | `transport.ts`, `readErrorMessage` |
 | 9 | `x-typesafe-request-id` is present on success **and** failure | `transport.ts`, Include Request ID option |
 | 10 | A `noul` question is accepted with no `criteria` key | `questions.ts`, noul branch |
 
-Assumptions 3, 5 and 8 are the ones most likely to be wrong, and all three are cheap to fix. They are type declarations and one mapping function, not architecture.
+Assumptions 7 and 8 were the ones that turned out wrong on first contact, and both were cheap to fix: a type declaration and one mapping function, not architecture. Treat 3 and 5 as the next most fragile if the API version changes.
 
 ---
 
