@@ -247,6 +247,72 @@ describe('live wire shapes', () => {
 		});
 	});
 
+	it('digs the body out of cause.response.data, which is where n8n puts it', async () => {
+		// n8n 2.39.8 throws a NodeApiError, not the axios error, and keeps the real
+		// response on `cause`. Looking only at error.response found nothing, so every
+		// API failure showed axios's generic text instead of the server's message.
+		const httpRequest = vi.fn().mockRejectedValue(
+			Object.assign(new Error('Request failed with status code 401'), {
+				name: 'NodeApiError',
+				httpCode: '401',
+				cause: {
+					response: {
+						status: 401,
+						data: {
+							detail: {
+								error_type: 'authentication_error',
+								message: 'Cannot authenticate with the server.',
+							},
+						},
+						headers: { 'x-typesafe-request-id': 'req_cause' },
+					},
+				},
+			}),
+		);
+		const { context } = makeContext({ params: BUILDER_PARAMS, httpRequest });
+
+		await expect(TypeSafeJev.prototype.execute.call(context as never)).rejects.toMatchObject({
+			message: expect.stringContaining('401'),
+			description: expect.stringContaining('Cannot authenticate with the server.'),
+		});
+	});
+
+	it('includes the request ID from cause.response.headers', async () => {
+		const httpRequest = vi.fn().mockRejectedValue({
+			httpCode: '429',
+			cause: {
+				response: {
+					status: 429,
+					data: { detail: { message: 'Rate limit exceeded' } },
+					headers: { 'x-typesafe-request-id': 'req_rate' },
+				},
+			},
+		});
+		const { context } = makeContext({ params: BUILDER_PARAMS, httpRequest });
+
+		await expect(TypeSafeJev.prototype.execute.call(context as never)).rejects.toMatchObject({
+			description: expect.stringContaining('req_rate'),
+		});
+	});
+
+	it('does not double the period when the server message ends in one', async () => {
+		const httpRequest = vi.fn().mockRejectedValue({
+			httpCode: '401',
+			cause: {
+				response: {
+					status: 401,
+					data: { detail: { message: 'Cannot authenticate with the server.' } },
+					headers: { 'x-typesafe-request-id': 'req_dot' },
+				},
+			},
+		});
+		const { context } = makeContext({ params: BUILDER_PARAMS, httpRequest });
+
+		await expect(TypeSafeJev.prototype.execute.call(context as never)).rejects.toMatchObject({
+			description: 'Cannot authenticate with the server. TypeSafe request ID: req_dot',
+		});
+	});
+
 	it('falls back to a plain string detail', async () => {
 		const httpRequest = vi.fn().mockRejectedValue({
 			statusCode: 422,

@@ -23,21 +23,39 @@ interface FullResponse {
 	statusCode: number;
 }
 
-/** Shape n8n's HTTP helpers attach to a failed request, across transports. */
+interface FailureResponse {
+	status?: number;
+	statusCode?: number;
+	body?: unknown;
+	data?: unknown;
+	headers?: Record<string, string | string[] | undefined>;
+}
+
+/**
+ * Shape n8n's HTTP helpers attach to a failed request.
+ *
+ * Verified against n8n 2.39.8: `httpRequestWithAuthentication` does not throw
+ * the axios error, it throws a NodeApiError that carries `httpCode` and keeps
+ * the axios error on `cause`. The real response, with the server's body under
+ * `data`, therefore lives at `error.cause.response`, not `error.response`.
+ * Both are read so a change in either direction keeps working.
+ */
 interface HttpFailure {
 	statusCode?: number;
-	httpCode?: string;
+	httpCode?: string | number;
 	message?: string;
-	response?: {
-		status?: number;
-		statusCode?: number;
-		body?: unknown;
-		headers?: Record<string, string | string[] | undefined>;
-	};
+	errorResponse?: unknown;
+	response?: FailureResponse;
+	cause?: { response?: FailureResponse };
+}
+
+function responseOf(error: HttpFailure): FailureResponse | undefined {
+	return error.response ?? error.cause?.response;
 }
 
 function readStatus(error: HttpFailure): number | undefined {
-	const candidates = [error.statusCode, error.response?.status, error.response?.statusCode];
+	const response = responseOf(error);
+	const candidates = [error.statusCode, response?.status, response?.statusCode];
 	for (const candidate of candidates) {
 		if (typeof candidate === 'number' && Number.isFinite(candidate)) return candidate;
 	}
@@ -92,11 +110,20 @@ function toApiError(
 ): NodeApiError {
 	const failure = error as HttpFailure;
 	const status = readStatus(failure);
-	const requestId = readHeader(failure.response?.headers, REQUEST_ID_HEADER);
+	const response = responseOf(failure);
+	const requestId = readHeader(response?.headers, REQUEST_ID_HEADER);
 
-	const description = [readErrorMessage(failure.response?.body), requestId ? `TypeSafe request ID: ${requestId}` : undefined]
-		.filter(Boolean)
-		.join('. ');
+	// axios puts the parsed body on `data`; n8n's own helpers use `body`.
+	const serverMessage =
+		readErrorMessage(response?.body) ??
+		readErrorMessage(response?.data) ??
+		readErrorMessage(failure.errorResponse);
+
+	const parts: string[] = [];
+	// The server's message usually ends in a period; do not add a second one.
+	if (serverMessage) parts.push(serverMessage.trim().replace(/\.\s*$/, ''));
+	if (requestId) parts.push(`TypeSafe request ID: ${requestId}`);
+	const description = parts.join('. ');
 
 	return new NodeApiError(context.getNode(), error as JsonObject, {
 		message: status ? `TypeSafe API returned ${status}` : 'TypeSafe API request failed',
