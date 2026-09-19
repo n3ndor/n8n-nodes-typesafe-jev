@@ -11,13 +11,29 @@
  * Exits 0 when every assumption holds, 1 otherwise. Costs one systemOne call.
  */
 
-const API_KEY = process.env.TYPESAFE_API_KEY;
+// A local .env is convenient and is gitignored. Loading it is best effort:
+// an explicit environment variable still wins.
+try {
+	process.loadEnvFile(new URL('../.env', import.meta.url));
+} catch {
+	// No .env, or this Node is too old for loadEnvFile. Environment only.
+}
+
+const KEY_NAMES = ['TYPESAFE_API_KEY', 'JEV_API', 'JEV_API_KEY', 'TYPESAFE_KEY'];
+const keyName = KEY_NAMES.find((name) => (process.env[name] ?? '').trim() !== '');
+const API_KEY = keyName ? process.env[keyName].trim() : undefined;
+
 const BASE_URL = (process.env.TYPESAFE_BASE_URL ?? 'https://api.typesafe.ai').replace(/\/+$/, '');
 
 if (!API_KEY) {
-	console.error('Set TYPESAFE_API_KEY first. Nothing was sent.');
+	console.error(
+		`No API key found. Set one of ${KEY_NAMES.join(', ')} in the environment,\n` +
+			'or put it in a .env file at the project root. Nothing was sent.',
+	);
 	process.exit(1);
 }
+
+console.log(`Using key from ${keyName} (${API_KEY.length} chars). Base URL: ${BASE_URL}`);
 
 const checks = [];
 const record = (ok, name, where, detail) => checks.push({ ok, name, where, detail });
@@ -57,17 +73,20 @@ record(
 	'credentials/TypeSafeApi.credentials.ts (authenticate)',
 	`got HTTP ${models.status}`,
 );
+const modelList = Array.isArray(models.body) ? models.body : (models.body?.models ?? null);
 record(
-	Array.isArray(models.body),
-	'GET /v1/models returns a bare array, not an envelope',
+	Array.isArray(modelList),
+	'GET /v1/models returns { models: [...] } or a bare array',
 	'nodes/TypeSafeJev/transport.ts listModels',
-	Array.isArray(models.body) ? `${models.body.length} models` : `got ${typeof models.body}`,
+	Array.isArray(modelList)
+		? `${modelList.length} models, envelope=${Array.isArray(models.body) ? 'bare array' : 'models key'}`
+		: `got ${JSON.stringify(models.body)?.slice(0, 120)}`,
 );
 record(
-	Array.isArray(models.body) && models.body.every((m) => typeof m?.name === 'string'),
+	Array.isArray(modelList) && modelList.length > 0 && modelList.every((m) => typeof m?.name === 'string'),
 	'every model card carries a string name',
 	'TypeSafeJev.node.ts getModels',
-	Array.isArray(models.body) ? models.body.map((m) => m?.name).join(', ') : 'n/a',
+	Array.isArray(modelList) ? modelList.map((m) => m?.name).join(', ') : 'n/a',
 );
 record(
 	models.status === 200,
@@ -76,7 +95,7 @@ record(
 	`GET /v1/models -> ${models.status}`,
 );
 
-const modelName = Array.isArray(models.body) && models.body[0]?.name ? models.body[0].name : 'jev-latest';
+const modelName = Array.isArray(modelList) && modelList[0]?.name ? modelList[0].name : 'jev-latest';
 
 // --- 2. systemOne, one question of each type -------------------------------
 const payload = {
@@ -173,10 +192,14 @@ record(
 	'transport.ts toApiError',
 	`got HTTP ${failure.status}`,
 );
+const failMessage =
+	(typeof failure.body?.detail === 'string' ? failure.body.detail : failure.body?.detail?.message) ??
+	failure.body?.error?.message ??
+	failure.body?.message;
 record(
-	typeof failure.body?.error?.message === 'string' || typeof failure.body?.message === 'string',
-	'error body exposes error.message or message',
-	'transport.ts toApiError (description)',
+	typeof failMessage === 'string' && failMessage.length > 0,
+	'error body exposes a message under detail, error or message',
+	'transport.ts readErrorMessage',
 	JSON.stringify(failure.body)?.slice(0, 200),
 );
 record(

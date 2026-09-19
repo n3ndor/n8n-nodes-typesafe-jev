@@ -8,7 +8,7 @@ import {
 	type JsonObject,
 } from 'n8n-workflow';
 
-import type { ModelCard, SystemOneRequest, SystemOneResult } from './types';
+import type { ModelCard, ModelsResponse, SystemOneRequest, SystemOneResult } from './types';
 
 export const DEFAULT_BASE_URL = 'https://api.typesafe.ai';
 export const DEFAULT_MODEL = 'jev-latest';
@@ -56,6 +56,31 @@ function readHeader(
 }
 
 /**
+ * Pull the server's own explanation out of an error body.
+ *
+ * Verified against the live API: a rejected request answers with
+ * `{ detail: { error_type, message } }`. The other shapes are accepted because
+ * the SDK's own types describe them and the wire format may still vary.
+ */
+function readErrorMessage(body: unknown): string | undefined {
+	if (typeof body === 'string') return body.trim() === '' ? undefined : body;
+	if (typeof body !== 'object' || body === null) return undefined;
+
+	const b = body as {
+		detail?: string | { message?: string; error_type?: string };
+		error?: string | { message?: string };
+		message?: string;
+	};
+
+	if (typeof b.detail === 'string') return b.detail;
+	if (typeof b.detail?.message === 'string') return b.detail.message;
+	if (typeof b.error === 'string') return b.error;
+	if (typeof b.error?.message === 'string') return b.error.message;
+	if (typeof b.message === 'string') return b.message;
+	return undefined;
+}
+
+/**
  * Turn a failed request into a NodeApiError that keeps what a user needs to act
  * on: the status, the server's own message, and the request ID to quote to
  * TypeSafe support.
@@ -67,15 +92,9 @@ function toApiError(
 ): NodeApiError {
 	const failure = error as HttpFailure;
 	const status = readStatus(failure);
-	const body = failure.response?.body as
-		| { error?: { message?: string }; message?: string }
-		| undefined;
 	const requestId = readHeader(failure.response?.headers, REQUEST_ID_HEADER);
 
-	const description = [
-		body?.error?.message ?? body?.message,
-		requestId ? `TypeSafe request ID: ${requestId}` : undefined,
-	]
+	const description = [readErrorMessage(failure.response?.body), requestId ? `TypeSafe request ID: ${requestId}` : undefined]
 		.filter(Boolean)
 		.join('. ');
 
@@ -138,8 +157,15 @@ export async function systemOne(
 	});
 }
 
-/** List the models available to the account. */
+/**
+ * List the models available to the account.
+ *
+ * The live API answers `{ models: [...] }`. A bare array is still accepted,
+ * because that is what the SDK's own types describe.
+ */
 export async function listModels(context: ILoadOptionsFunctions): Promise<ModelCard[]> {
-	const { data } = await request<ModelCard[]>(context, 'GET', '/v1/models');
-	return Array.isArray(data) ? data : [];
+	const { data } = await request<ModelCard[] | ModelsResponse>(context, 'GET', '/v1/models');
+	if (Array.isArray(data)) return data;
+	const models = (data as ModelsResponse)?.models;
+	return Array.isArray(models) ? models : [];
 }

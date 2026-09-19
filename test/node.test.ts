@@ -198,6 +198,68 @@ describe('TypeSafeJev.execute', () => {
 	});
 });
 
+describe('live wire shapes', () => {
+	// Both pinned against api.typesafe.ai on 2026-09-19. The SDK types described
+	// neither, and getting them wrong is silent: an empty dropdown, a blank error.
+	it('reads models out of the { models: [...] } envelope', async () => {
+		const httpRequest = vi.fn().mockResolvedValue({
+			body: {
+				models: [
+					{ name: 'jev-latest', description: 'The latest one', release_date: '2026-09-10' },
+					{ name: 'jev-preview', description: 'A preview', release_date: '2026-09-10' },
+				],
+			},
+			headers: {},
+			statusCode: 200,
+		});
+		const { context } = makeContext({ params: {}, httpRequest });
+
+		const options = await new TypeSafeJev().methods.loadOptions.getModels.call(context as never);
+
+		expect(options.map((o: { value: string }) => o.value)).toEqual(['jev-latest', 'jev-preview']);
+	});
+
+	it('still reads a bare array, which the SDK types describe', async () => {
+		const httpRequest = vi.fn().mockResolvedValue({
+			body: [{ name: 'jev-latest', description: 'x', release_date: 'y' }],
+			headers: {},
+			statusCode: 200,
+		});
+		const { context } = makeContext({ params: {}, httpRequest });
+
+		const options = await new TypeSafeJev().methods.loadOptions.getModels.call(context as never);
+
+		expect(options).toHaveLength(1);
+	});
+
+	it('surfaces the message from a { detail: { message } } error body', async () => {
+		const httpRequest = vi.fn().mockRejectedValue({
+			statusCode: 400,
+			response: {
+				body: { detail: { error_type: 'api_usage_error', message: 'Unknown model: nope' } },
+				headers: { 'x-typesafe-request-id': 'req_detail' },
+			},
+		});
+		const { context } = makeContext({ params: BUILDER_PARAMS, httpRequest });
+
+		await expect(TypeSafeJev.prototype.execute.call(context as never)).rejects.toMatchObject({
+			description: expect.stringContaining('Unknown model: nope'),
+		});
+	});
+
+	it('falls back to a plain string detail', async () => {
+		const httpRequest = vi.fn().mockRejectedValue({
+			statusCode: 422,
+			response: { body: { detail: 'Validation failed' }, headers: {} },
+		});
+		const { context } = makeContext({ params: BUILDER_PARAMS, httpRequest });
+
+		await expect(TypeSafeJev.prototype.execute.call(context as never)).rejects.toMatchObject({
+			description: expect.stringContaining('Validation failed'),
+		});
+	});
+});
+
 describe('TypeSafeJev.description', () => {
 	it('is usable as an AI Agent tool', () => {
 		expect(new TypeSafeJev().description.usableAsTool).toBe(true);

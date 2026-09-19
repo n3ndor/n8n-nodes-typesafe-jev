@@ -98,3 +98,8 @@ export interface ModelCard {
 	description: string;
 	release_date: string;
 }
+
+/** Response body of `GET /v1/models`, as the live API returns it. */
+export interface ModelsResponse {
+	models: ModelCard[];
+}
