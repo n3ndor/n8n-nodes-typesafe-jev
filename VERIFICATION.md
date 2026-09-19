@@ -1,18 +1,27 @@
 # Day-one verification
 
-Everything in this package is unit-tested, but **nothing has touched the live API**. The transport was written from the compiled `@typesafe-ai/sdk` bundle, so the endpoint paths, auth scheme, response envelope and error shape are all inferences. This file is the shortest path from "key arrives" to "known good".
+Step 1 ran green against `api.typesafe.ai` on 2026-09-19: **16/16 assumptions hold**. Re-run it after any change to the transport, and on a new account or base URL.
 
-Work through it in order. Steps 1 and 2 take about five minutes and de-risk everything else.
+Two assumptions taken from the compiled SDK bundle turned out to be wrong, and both failed silently rather than loudly:
+
+| Assumed | Actual | What broke |
+| --- | --- | --- |
+| `GET /v1/models` returns a bare array | `{ "models": [...] }` | Model dropdown came back empty |
+| Errors expose `error.message` | `{ "detail": { "error_type", "message" } }` | API failures showed a status with no explanation |
+
+Both are fixed, pinned by tests, and asserted by the checker. Models available on this account: `jev-latest` and `jev-preview`. `jev-latest` currently resolves to `jev-1.13.0`.
+
+Work through the rest in order.
 
 ---
 
 ## 1. Check the API against our assumptions
 
 ```bash
-TYPESAFE_API_KEY=sk-your-key node scripts/verify-api.mjs
+node scripts/verify-api.mjs
 ```
 
-Costs two `systemOne` calls. Prints a PASS/FAIL line per assumption and, for any failure, the exact file that breaks. Green means the node's wire contract is correct and you can trust the rest.
+It loads a gitignored `.env` at the project root and accepts `TYPESAFE_API_KEY`, `JEV_API`, `JEV_API_KEY` or `TYPESAFE_KEY`, in that order. An explicit environment variable wins over the file. Costs two `systemOne` calls. Prints a PASS/FAIL line per assumption and, for any failure, the exact file that breaks. Green means the node's wire contract is correct and you can trust the rest.
 
 The assumptions it checks, in rough order of how much damage a mismatch would do:
 
