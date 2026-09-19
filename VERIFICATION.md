@@ -44,6 +44,11 @@ Assumptions 7 and 8 were the ones that turned out wrong on first contact, and bo
 
 ## 2. Run it inside n8n
 
+Ran green on 2026-09-19 against n8n 2.39.8 with a real key. Both input modes returned correct answers on all three sample tickets, `score` matched the expected value of its probabilities in every case, and the request ID option populated. The JSON-mode node returning answers at all is the regression proof: that path could never work before.
+
+Note that n8n 2.x binds port 5678 well before its routes mount, so `http://localhost:5678` answers 404 for the first few minutes of a cold start while migrations run. It is not hung. Wait for a 200 rather than restarting.
+
+
 `n8n-node dev` pulls `n8n@latest`, and n8n 2.x requires **Node 24 or newer**. On an older Node the install fails rather than warning clearly. Check first:
 
 ```bash
