@@ -1,5 +1,6 @@
 import {
 	NodeApiError,
+	sleep,
 	type IDataObject,
 	type IExecuteFunctions,
 	type IHttpRequestMethods,
@@ -16,6 +17,56 @@ export const CREDENTIAL_NAME = 'typeSafeApi';
 
 /** Header TypeSafe returns on every response; quote it when reporting a failure. */
 const REQUEST_ID_HEADER = 'x-typesafe-request-id';
+
+/**
+ * Statuses TypeSafe asks callers to back off on. Everything else is final: retrying a
+ * 401 or a 422 only burns the rate limit the node is trying to stay inside.
+ */
+const RETRYABLE_STATUS = new Set([429, 529]);
+
+/**
+ * Transport failures worth retrying. These never carry a status, because the helper
+ * throws rather than answering when the socket times out or drops.
+ */
+const RETRYABLE_ERROR_PATTERNS = [
+	'etimedout',
+	'esockettimedout',
+	'econnreset',
+	'econnrefused',
+	'epipe',
+	'eai_again',
+	'enotfound',
+	'socket hang up',
+	'timeout',
+	'timed out',
+];
+
+/**
+ * Ceilings on backing off. retry-after is a hint from the API or from any proxy in
+ * between, so it is honoured but bounded: one header should not be able to hold an n8n
+ * worker for as long as it likes. The budget covers the whole sequence for one item and
+ * is checked before sleeping, so the node gives up rather than starting a wait it cannot
+ * finish inside it.
+ */
+const MAX_ATTEMPTS = 3;
+const MAX_RETRY_WAIT_MS = 15_000;
+const RETRY_BUDGET_MS = 30_000;
+
+/** Whether a thrown request failure is a transport problem rather than a rejection. */
+function isTransportFailure(error: unknown): boolean {
+	const failure = error as { code?: unknown; message?: unknown; cause?: { code?: unknown } };
+	const parts = [failure?.code, failure?.cause?.code, failure?.message]
+		.filter((part) => part !== undefined && part !== null)
+		.map((part) => String(part).toLowerCase());
+
+	return parts.some((part) => RETRYABLE_ERROR_PATTERNS.some((pattern) => part.includes(pattern)));
+}
+
+/** Seconds from a retry-after header, when it carries one. */
+function readRetryAfterMs(error: HttpFailure): number | undefined {
+	const seconds = Number(readHeader(responseOf(error)?.headers, 'retry-after'));
+	return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : undefined;
+}
 
 interface FullResponse {
 	body: unknown;
@@ -155,19 +206,36 @@ async function request<T>(
 		},
 	};
 
-	try {
-		const response = (await context.helpers.httpRequestWithAuthentication.call(
-			context,
-			CREDENTIAL_NAME,
-			requestOptions,
-		)) as FullResponse;
+	let budgetMs = RETRY_BUDGET_MS;
 
-		return {
-			data: response.body as T,
-			requestId: readHeader(response.headers, REQUEST_ID_HEADER),
-		};
-	} catch (error) {
-		throw toApiError(context, error, options.itemIndex);
+	for (let attempt = 1; ; attempt++) {
+		try {
+			const response = (await context.helpers.httpRequestWithAuthentication.call(
+				context,
+				CREDENTIAL_NAME,
+				requestOptions,
+			)) as FullResponse;
+
+			return {
+				data: response.body as T,
+				requestId: readHeader(response.headers, REQUEST_ID_HEADER),
+			};
+		} catch (error) {
+			const status = readStatus(error as HttpFailure);
+			const retryable =
+				status === undefined ? isTransportFailure(error) : RETRYABLE_STATUS.has(status);
+
+			if (!retryable || attempt >= MAX_ATTEMPTS) {
+				throw toApiError(context, error, options.itemIndex);
+			}
+
+			const requested = readRetryAfterMs(error as HttpFailure) ?? 2 ** (attempt - 1) * 500;
+			const waitMs = Math.min(requested, MAX_RETRY_WAIT_MS, budgetMs);
+			if (waitMs <= 0) throw toApiError(context, error, options.itemIndex);
+
+			budgetMs -= waitMs;
+			await sleep(waitMs);
+		}
 	}
 }
 

@@ -23,6 +23,27 @@ interface Ctx {
 	continueOnFail?: boolean;
 }
 
+/**
+ * Runs execute() with the clock faked, so a test that exercises the retry backoff
+ * finishes instantly instead of really sleeping between attempts.
+ */
+async function executeWithoutWaiting(context: unknown) {
+	vi.useFakeTimers();
+	try {
+		const running = TypeSafeJev.prototype.execute.call(context as never);
+		const settled = running.then(
+			(value) => ({ value }),
+			(error: unknown) => ({ error }),
+		);
+		await vi.runAllTimersAsync();
+		const outcome = await settled;
+		if ('error' in outcome) throw outcome.error;
+		return outcome.value;
+	} finally {
+		vi.useRealTimers();
+	}
+}
+
 function makeContext(ctx: Ctx) {
 	const httpRequest = ctx.httpRequest ?? vi.fn().mockResolvedValue(RESPONSE);
 	const items = ctx.items ?? [{ json: { ticket: 'T-1' } }];
@@ -164,10 +185,68 @@ describe('TypeSafeJev.execute', () => {
 		});
 		const { context } = makeContext({ params: BUILDER_PARAMS, httpRequest });
 
-		await expect(TypeSafeJev.prototype.execute.call(context as never)).rejects.toMatchObject({
+		// A 429 is retried now, so this runs on a faked clock to stay instant.
+		await expect(executeWithoutWaiting(context)).rejects.toMatchObject({
 			message: expect.stringContaining('429'),
 			description: expect.stringContaining('req_err'),
 		});
+	});
+
+	it('retries a rate limit and returns the answer once it clears', async () => {
+		const httpRequest = vi
+			.fn()
+			.mockRejectedValueOnce({ statusCode: 429, response: { headers: {} } })
+			.mockResolvedValue(RESPONSE);
+		const { context } = makeContext({ params: BUILDER_PARAMS, httpRequest });
+
+		const [output] = await executeWithoutWaiting(context);
+
+		expect(httpRequest).toHaveBeenCalledTimes(2);
+		expect(output[0].json.typesafeJev).toMatchObject({ model: 'jev-1' });
+	});
+
+	it('retries a dropped connection, which arrives without a status', async () => {
+		const httpRequest = vi
+			.fn()
+			.mockRejectedValueOnce(Object.assign(new Error('socket hang up'), { code: 'ECONNRESET' }))
+			.mockResolvedValue(RESPONSE);
+		const { context } = makeContext({ params: BUILDER_PARAMS, httpRequest });
+
+		const [output] = await executeWithoutWaiting(context);
+
+		expect(httpRequest).toHaveBeenCalledTimes(2);
+		expect(output).toHaveLength(1);
+	});
+
+	it('gives up after three attempts rather than retrying forever', async () => {
+		const httpRequest = vi.fn().mockRejectedValue({ statusCode: 529, response: { headers: {} } });
+		const { context } = makeContext({ params: BUILDER_PARAMS, httpRequest });
+
+		await expect(executeWithoutWaiting(context)).rejects.toThrow(/529/);
+		expect(httpRequest).toHaveBeenCalledTimes(3);
+	});
+
+	it('does not retry a rejection the caller has to fix', async () => {
+		const httpRequest = vi.fn().mockRejectedValue({ statusCode: 422, response: { headers: {} } });
+		const { context } = makeContext({ params: BUILDER_PARAMS, httpRequest });
+
+		await expect(executeWithoutWaiting(context)).rejects.toThrow(/422/);
+		expect(httpRequest).toHaveBeenCalledTimes(1);
+	});
+
+	it('bounds a retry-after that asks for longer than the budget allows', async () => {
+		const httpRequest = vi.fn().mockRejectedValue({
+			statusCode: 429,
+			response: { headers: { 'retry-after': '3600' } },
+		});
+		const { context } = makeContext({ params: BUILDER_PARAMS, httpRequest });
+
+		// An hour, asked for three times, would hold the worker for three hours. The
+		// header is honoured but capped, and the whole sequence stays inside its budget.
+		const started = Date.now();
+		await expect(executeWithoutWaiting(context)).rejects.toThrow(/429/);
+		expect(Date.now() - started).toBeLessThan(60_000);
+		expect(httpRequest).toHaveBeenCalledTimes(3);
 	});
 
 	it('returns an error item per failing input when Continue On Fail is set', async () => {
@@ -290,7 +369,8 @@ describe('live wire shapes', () => {
 		});
 		const { context } = makeContext({ params: BUILDER_PARAMS, httpRequest });
 
-		await expect(TypeSafeJev.prototype.execute.call(context as never)).rejects.toMatchObject({
+		// Also a 429, so also retried; run it on a faked clock.
+		await expect(executeWithoutWaiting(context)).rejects.toMatchObject({
 			description: expect.stringContaining('req_rate'),
 		});
 	});
