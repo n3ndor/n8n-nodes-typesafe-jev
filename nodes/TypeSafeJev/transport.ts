@@ -151,7 +151,7 @@ async function request<T>(
 		returnFullResponse: true,
 		headers: {
 			Accept: 'application/json',
-			'User-Agent': 'n8n-nodes-typesafe-jev',
+			'User-Agent': '@n3ndor/n8n-nodes-typesafe-jev',
 		},
 	};
 

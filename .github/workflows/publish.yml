@@ -22,7 +22,7 @@
 #      provenance comes from `id-token: write` below and works either way.
 #
 # STEP 2, immediately after that first publish, switch to OIDC:
-#   1. npmjs.com -> Packages -> n8n-nodes-typesafe-jev -> Settings.
+#   1. npmjs.com -> Packages -> @n3ndor/n8n-nodes-typesafe-jev -> Settings.
 #   2. "Trusted publishing" -> "Add a publisher". Select GitHub Actions:
 #        Repository owner: n3ndor
 #        Repository name:  n8n-nodes-typesafe-jev

@@ -82,7 +82,7 @@ n8n registers a node under a different type name depending on how it was loaded:
 
 | Loaded via | Registered type |
 | --- | --- |
-| npm install, which is what real users do | `n8n-nodes-typesafe-jev.typeSafeJev` |
+| npm install, which is what real users do | `@n3ndor/n8n-nodes-typesafe-jev.typeSafeJev` |
 | `pnpm run dev`, from the `custom/` folder | `CUSTOM.typeSafeJev` |
 
 `CustomDirectoryLoader` hardcodes its package name to `CUSTOM`, so a workflow exported from one mode will not resolve in the other. It fails with `Unrecognized node type`, which looks exactly like the node failing to load even though it loaded fine.
@@ -162,7 +162,7 @@ npm can only configure a Trusted Publisher on a package that **already exists** 
 | --- | --- | --- |
 | 1 | Now | Create a granular access token on npmjs.com, scoped to your account with read and write, short expiry. Add it as the `NPM_TOKEN` repository secret on GitHub. |
 | 2 | Once publishing is unblocked | `pnpm run release`. CI publishes with the token, and still attaches provenance, which comes from `id-token: write` rather than from the auth method. |
-| 3 | Immediately after | npmjs.com → Packages → n8n-nodes-typesafe-jev → Settings → Trusted publishing → Add a publisher (GitHub Actions, owner `n3ndor`, repo `n8n-nodes-typesafe-jev`, workflow `publish.yml`, environment blank). |
+| 3 | Immediately after | npmjs.com → Packages → @n3ndor/n8n-nodes-typesafe-jev → Settings → Trusted publishing → Add a publisher (GitHub Actions, owner `n3ndor`, repo `n8n-nodes-typesafe-jev`, workflow `publish.yml`, environment blank). |
 | 4 | Same sitting | Delete the `NPM_TOKEN` secret and revoke the token. The workflow skips the token path when the secret is unset and npm falls back to OIDC. |
 
 Step 1 can be done before the publishing block lifts. Token creation is not the same operation as publishing.

@@ -17,7 +17,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 
 const SOURCE = 'examples/ticket-triage.workflow.json';
 const TARGET = 'examples/ticket-triage.dev.workflow.json';
-const PACKAGE_PREFIX = 'n8n-nodes-typesafe-jev.';
+const PACKAGE_PREFIX = '@n3ndor/n8n-nodes-typesafe-jev.';
 
 const workflow = JSON.parse(readFileSync(SOURCE, 'utf8'));
 

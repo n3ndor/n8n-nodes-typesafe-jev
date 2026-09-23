@@ -42,7 +42,7 @@ const headers = {
 	Authorization: `Bearer ${API_KEY}`,
 	Accept: 'application/json',
 	'Content-Type': 'application/json',
-	'User-Agent': 'n8n-nodes-typesafe-jev/verify',
+	'User-Agent': '@n3ndor/n8n-nodes-typesafe-jev/verify',
 };
 
 async function call(method, path, body) {

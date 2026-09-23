@@ -80,7 +80,7 @@
 			},
 			"id": "a1000000-0000-4000-8000-000000000003",
 			"name": "Jev (Question Builder)",
-			"type": "n8n-nodes-typesafe-jev.typeSafeJev",
+			"type": "@n3ndor/n8n-nodes-typesafe-jev.typeSafeJev",
 			"typeVersion": 1,
 			"position": [
 				460,
@@ -99,7 +99,7 @@
 			},
 			"id": "a1000000-0000-4000-8000-000000000004",
 			"name": "Jev (JSON, Simplified)",
-			"type": "n8n-nodes-typesafe-jev.typeSafeJev",
+			"type": "@n3ndor/n8n-nodes-typesafe-jev.typeSafeJev",
 			"typeVersion": 1,
 			"position": [
 				460,

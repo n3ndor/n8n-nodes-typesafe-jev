@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-typesafe-jev.typeSafeJev",
+	"node": "@n3ndor/n8n-nodes-typesafe-jev.typeSafeJev",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["AI", "Utility"],
