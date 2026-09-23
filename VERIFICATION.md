@@ -156,15 +156,22 @@ Once that default flips, installing an unverified node stops being a click in th
 
 ### The npm trusted publishing bootstrap
 
-The npmjs.com **website** can only add a Trusted Publisher to a package that already exists, which used to force a token for the first publish. `npm trust`, in npm 11.10.0 and later, registers one for a name that has never been published, so no token is created at any point.
+A Trusted Publisher can only be attached to a package that **already exists**. This is true of the npmjs.com website and of `npm trust` alike: the CLI answers `404 Not Found` on `POST /-/package/<name>/trust` for a name that has never been published. Verified against npm 11.19.0 on 2026-09-23.
+
+`npm trust github ... --dry-run` reports success on that same name. The dry run validates arguments without calling the endpoint, so it cannot fail for this reason and proves nothing about whether the real call will work.
+
+The bootstrap is therefore one local publish, and no token at any point:
 
 | # | When | Action |
 | --- | --- | --- |
-| 1 | Once, by the account owner | `npm trust github "@n3ndor/n8n-nodes-typesafe-jev" --file publish.yml --repo n3ndor/n8n-nodes-typesafe-jev --allow-publish`. Takes 2FA. |
-| 2 | Verify | `npm trust list "@n3ndor/n8n-nodes-typesafe-jev"` shows the relationship before anything is published. |
-| 3 | Release | `pnpm run release`. CI exchanges its OIDC token for publish rights and attaches provenance, which comes from `id-token: write`. |
+| 1 | Once, by the account owner | `npm publish`. Local, under 2FA. Creates the name. This version carries no provenance, because provenance requires the CI OIDC token. |
+| 2 | Immediately after | `npm trust github "@n3ndor/n8n-nodes-typesafe-jev" --file publish.yml --repo n3ndor/n8n-nodes-typesafe-jev --allow-publish` |
+| 3 | Confirm | `npm trust list "@n3ndor/n8n-nodes-typesafe-jev"` |
+| 4 | Every release after | `pnpm run release`. CI exchanges its OIDC token for publish rights and attaches provenance. |
 
 No `NPM_TOKEN` secret exists and none is needed. Withdraw the grant with `npm trust revoke`.
+
+Submit a version from step 4 to the Creator Portal, not the bootstrap version.
 
 What this grants is worth stating plainly: anyone who can push a tag to this repository can publish the package. Repository write access is publish access, which is the same exposure a stored token would carry, without the stored token.
 

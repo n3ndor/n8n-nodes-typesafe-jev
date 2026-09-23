@@ -9,21 +9,27 @@
 # GitHub OIDC token minted by `id-token: write` below, against a Trusted
 # Publisher registered on npm. Nothing long lived is stored in this repository.
 #
-# The npmjs.com website can only add a Trusted Publisher to a package that
-# already exists, which used to force a token for the very first publish. The
-# `npm trust` command, npm 11.10.0 and later, registers one for a name that has
-# never been published, so the token step is gone. Registering it takes 2FA and
-# has to be run by the account owner:
+# BOOTSTRAP: a Trusted Publisher can only be attached to a package that already
+# exists. That holds for the npmjs.com website and for `npm trust` alike; the
+# CLI answers 404 on a name that has never been published, and its --dry-run
+# does not catch this, because the dry run validates arguments without calling
+# the endpoint. So the first version is published locally, by the account owner
+# under 2FA, and every version after it comes from here with provenance:
 #
-#   npm trust github "@n3ndor/n8n-nodes-typesafe-jev" \
-#     --file publish.yml \
-#     --repo n3ndor/n8n-nodes-typesafe-jev \
-#     --allow-publish
+#   1. npm publish            (local, once, creates the name)
+#   2. npm trust github "@n3ndor/n8n-nodes-typesafe-jev" \
+#        --file publish.yml \
+#        --repo n3ndor/n8n-nodes-typesafe-jev \
+#        --allow-publish
+#   3. npm trust list "@n3ndor/n8n-nodes-typesafe-jev"   (confirm)
 #
-# Check it with `npm trust list "@n3ndor/n8n-nodes-typesafe-jev"`, and withdraw
-# it with `npm trust revoke`. Note what it grants: anyone who can push a tag to
-# this repository can publish the package, so repository write access is
-# publish access.
+# No npm token is created at any point, and none is stored in this repository.
+# Withdraw the grant with `npm trust revoke`. Note what it grants: anyone who
+# can push a tag to this repository can publish the package, so repository
+# write access is publish access.
+#
+# Only the bootstrap version lacks provenance. Submit a later one to the n8n
+# Creator Portal.
 #
 # RELEASE: run `pnpm run release` locally. It prompts for a version bump,
 # updates the changelog, commits, tags and pushes, which triggers this
