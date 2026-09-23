@@ -1,6 +1,6 @@
 {
 	"name": "@n3ndor/n8n-nodes-typesafe-jev",
-	"version": "0.4.0",
+	"version": "0.4.1",
 	"description": "n8n community node for TypeSafe Jev: typed, calibrated decisions for classification, routing and scoring",
 	"license": "MIT",
 	"keywords": [

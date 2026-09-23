@@ -1,4 +1,3 @@
-/* eslint-disable @n8n/community-nodes/require-node-api-error -- This module is deliberately free of n8n imports so the schema rules can be unit tested without a node context. QuestionSchemaError is converted into a NodeOperationError at the single boundary in TypeSafeJev.node.ts, which is what the user actually sees. */
 import { QUESTION_TYPES, type EntryType, type Question, type Questions } from './types';
 
 /**
@@ -14,6 +13,15 @@ export class QuestionSchemaError extends Error {
 	}
 }
 
+/** Attempt a parse and report the outcome, rather than raising from the catch. */
+function tryParseJson(text: string): { ok: true; value: unknown } | { ok: false } {
+	try {
+		return { ok: true, value: JSON.parse(text) };
+	} catch {
+		return { ok: false };
+	}
+}
+
 /**
  * n8n `json` parameters hand back a **string** whenever the user types literal
  * JSON into the field, and the parsed value only when the field holds an
@@ -26,11 +34,10 @@ export function parseJsonParameter(value: unknown, fieldName: string): unknown {
 	const trimmed = value.trim();
 	if (trimmed === '') return undefined;
 
-	try {
-		return JSON.parse(trimmed);
-	} catch {
-		throw new QuestionSchemaError(`${fieldName} is not valid JSON.`);
-	}
+	const parsed = tryParseJson(trimmed);
+	if (!parsed.ok) throw new QuestionSchemaError(`${fieldName} is not valid JSON.`);
+
+	return parsed.value;
 }
 
 /**
