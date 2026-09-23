@@ -156,16 +156,17 @@ Once that default flips, installing an unverified node stops being a click in th
 
 ### The npm trusted publishing bootstrap
 
-npm can only configure a Trusted Publisher on a package that **already exists** in the registry. There is no pending state, so a brand new package cannot use OIDC for its first publish. The order has to be:
+The npmjs.com **website** can only add a Trusted Publisher to a package that already exists, which used to force a token for the first publish. `npm trust`, in npm 11.10.0 and later, registers one for a name that has never been published, so no token is created at any point.
 
 | # | When | Action |
 | --- | --- | --- |
-| 1 | Now | Create a granular access token on npmjs.com, scoped to your account with read and write, short expiry. Add it as the `NPM_TOKEN` repository secret on GitHub. |
-| 2 | Once publishing is unblocked | `pnpm run release`. CI publishes with the token, and still attaches provenance, which comes from `id-token: write` rather than from the auth method. |
-| 3 | Immediately after | npmjs.com → Packages → @n3ndor/n8n-nodes-typesafe-jev → Settings → Trusted publishing → Add a publisher (GitHub Actions, owner `n3ndor`, repo `n8n-nodes-typesafe-jev`, workflow `publish.yml`, environment blank). |
-| 4 | Same sitting | Delete the `NPM_TOKEN` secret and revoke the token. The workflow skips the token path when the secret is unset and npm falls back to OIDC. |
+| 1 | Once, by the account owner | `npm trust github "@n3ndor/n8n-nodes-typesafe-jev" --file publish.yml --repo n3ndor/n8n-nodes-typesafe-jev --allow-publish`. Takes 2FA. |
+| 2 | Verify | `npm trust list "@n3ndor/n8n-nodes-typesafe-jev"` shows the relationship before anything is published. |
+| 3 | Release | `pnpm run release`. CI exchanges its OIDC token for publish rights and attaches provenance, which comes from `id-token: write`. |
 
-Step 1 can be done before the publishing block lifts. Token creation is not the same operation as publishing.
+No `NPM_TOKEN` secret exists and none is needed. Withdraw the grant with `npm trust revoke`.
+
+What this grants is worth stating plainly: anyone who can push a tag to this repository can publish the package. Repository write access is publish access, which is the same exposure a stored token would carry, without the stored token.
 
 Full details are in the header of `.github/workflows/publish.yml`.
 

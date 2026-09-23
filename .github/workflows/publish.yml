@@ -5,36 +5,31 @@
 # verify that a package was built by this exact workflow, from this exact
 # repository and commit. Local `npm publish` will not satisfy verification.
 #
-# IMPORTANT: npm can only configure a Trusted Publisher on a package that
-# ALREADY EXISTS in the registry. There is no "pending" trusted publisher, so a
-# brand new package cannot use OIDC for its first publish. The first release has
-# to be authenticated with a token; OIDC takes over from the second one.
+# AUTH: this workflow holds no npm token. It authenticates by exchanging the
+# GitHub OIDC token minted by `id-token: write` below, against a Trusted
+# Publisher registered on npm. Nothing long lived is stored in this repository.
 #
-# STEP 1, first publish only, granular access token:
-#   1. npmjs.com -> Access Tokens -> Generate New Token -> Granular Access Token.
-#      Packages and scopes: "Only select packages and scopes" is not available
-#      for a name that does not exist yet, so scope it to your user account with
-#      "Read and write". Set a short expiry (1 to 7 days); it is thrown away in
-#      step 3.
-#   2. GitHub -> repo Settings -> Secrets and variables -> Actions -> New
-#      repository secret, named NPM_TOKEN.
-#   3. Push a version tag. This workflow publishes with provenance, because
-#      provenance comes from `id-token: write` below and works either way.
+# The npmjs.com website can only add a Trusted Publisher to a package that
+# already exists, which used to force a token for the very first publish. The
+# `npm trust` command, npm 11.10.0 and later, registers one for a name that has
+# never been published, so the token step is gone. Registering it takes 2FA and
+# has to be run by the account owner:
 #
-# STEP 2, immediately after that first publish, switch to OIDC:
-#   1. npmjs.com -> Packages -> @n3ndor/n8n-nodes-typesafe-jev -> Settings.
-#   2. "Trusted publishing" -> "Add a publisher". Select GitHub Actions:
-#        Repository owner: n3ndor
-#        Repository name:  n8n-nodes-typesafe-jev
-#        Workflow name:    publish.yml
-#        Environment:      (leave blank)
-#   3. DELETE the NPM_TOKEN secret from the GitHub repo, and revoke the token on
-#      npmjs.com. The step below skips the token path when NPM_TOKEN is unset
-#      and npm falls back to the OIDC exchange.
+#   npm trust github "@n3ndor/n8n-nodes-typesafe-jev" \
+#     --file publish.yml \
+#     --repo n3ndor/n8n-nodes-typesafe-jev \
+#     --allow-publish
 #
-# RELEASE: run `pnpm run release` locally. It lints, builds, prompts for a
-# version bump, updates the changelog, commits, tags and pushes, which triggers
-# this workflow.
+# Check it with `npm trust list "@n3ndor/n8n-nodes-typesafe-jev"`, and withdraw
+# it with `npm trust revoke`. Note what it grants: anyone who can push a tag to
+# this repository can publish the package, so repository write access is
+# publish access.
+#
+# RELEASE: run `pnpm run release` locally. It prompts for a version bump,
+# updates the changelog, commits, tags and pushes, which triggers this
+# workflow. The same command behaves differently here, because `n8n-node
+# release` detects GITHUB_ACTIONS and builds and publishes with provenance
+# instead of bumping.
 
 name: Publish
 
@@ -64,12 +59,14 @@ jobs:
           node-version: 'lts/*'
           cache: 'pnpm'
 
+      # The OIDC exchange with npm needs a recent npm. The one bundled with the
+      # Node LTS image is not guaranteed to be new enough, and an old npm fails
+      # by asking for a token rather than by naming the real cause.
+      - name: Use an npm that speaks OIDC
+        run: npm install --global npm@latest
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Release
-        run: |
-          [ -n "$NPM_TOKEN" ] && npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
-          pnpm run release
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm run release
