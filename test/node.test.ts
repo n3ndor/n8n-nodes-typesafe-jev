@@ -185,6 +185,36 @@ describe('TypeSafeJev.execute', () => {
 		expect(output[0].json.error).toContain('500');
 	});
 
+	it('rejects an answer whose type is not the type the question was asked as', async () => {
+		const httpRequest = vi.fn().mockResolvedValue({
+			...RESPONSE,
+			body: {
+				...RESPONSE.body,
+				answers: { intent: { type: 'noul', noul: 0.8 } },
+			},
+		});
+		const { context } = makeContext({ params: BUILDER_PARAMS, httpRequest });
+
+		// Simplify would otherwise read the value the returned type names, so a noul in
+		// place of a choice reaches the workflow as 0.8 where a label was expected.
+		await expect(TypeSafeJev.prototype.execute.call(context as never)).rejects.toMatchObject({
+			message: expect.stringContaining('wrong type'),
+			description: expect.stringContaining('asked as a choice'),
+		});
+	});
+
+	it('passes through an answer for a question it did not ask', async () => {
+		const { context } = makeContext({ params: { ...BUILDER_PARAMS, simplify: true } });
+
+		// RESPONSE carries urgent and anger, which BUILDER_PARAMS never asks for. There is
+		// no question to check them against, and an extra field is not a broken contract.
+		const [output] = await TypeSafeJev.prototype.execute.call(context as never);
+
+		expect(output[0].json.typesafeJev).toMatchObject({
+			answers: { intent: 'refund', urgent: 0.8, anger: 1.4 },
+		});
+	});
+
 	it('processes every input item', async () => {
 		const { context, httpRequest } = makeContext({
 			params: BUILDER_PARAMS,

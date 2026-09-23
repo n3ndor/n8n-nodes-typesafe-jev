@@ -9,6 +9,7 @@ import {
 	type INodePropertyOptions,
 	type INodeType,
 	type INodeTypeDescription,
+	type JsonObject,
 } from 'n8n-workflow';
 
 import { typeSafeJevProperties } from './properties';
@@ -27,6 +28,39 @@ import type { Answer, Questions } from './types';
  * nested fixed collection and validated before the call, which routing-based
  * declarative nodes cannot express.
  */
+
+/**
+ * Check every answer against the question it belongs to.
+ *
+ * `simplifyAnswer` reads the value named by the type the server sent, so a noul
+ * answered as a choice would yield the choice string and a downstream numeric
+ * comparison would quietly evaluate false. The node knows what it asked, so a
+ * mismatch is a broken contract rather than a value to pass on.
+ */
+function assertAnswersMatchQuestions(
+	context: IExecuteFunctions,
+	questions: Questions,
+	answers: Record<string, Answer>,
+	itemIndex: number,
+): void {
+	for (const [name, answer] of Object.entries(answers)) {
+		// An answer with no matching question is left alone: the node has nothing to
+		// compare it against, and an extra field is not on its own a broken contract.
+		const asked = questions[name]?.type;
+		if (asked === undefined) continue;
+
+		const returned = (answer as { type?: unknown })?.type;
+		if (returned !== asked) {
+			throw new NodeApiError(context.getNode(), answers as unknown as JsonObject, {
+				message: 'TypeSafe API returned an answer of the wrong type',
+				description: `Question "${name}" was asked as a ${asked} but the answer has type ${
+					typeof returned === 'string' ? `"${returned}"` : String(returned)
+				}.`,
+				itemIndex,
+			});
+		}
+	}
+}
 
 /** Collapse an answer to the single value most workflows branch on. */
 function simplifyAnswer(answer: Answer): string | number {
@@ -124,6 +158,8 @@ export class TypeSafeJev implements INodeType {
 					{ model, state, questions },
 					{ timeout: options.timeout, itemIndex },
 				);
+
+				assertAnswersMatchQuestions(this, questions, data.answers, itemIndex);
 
 				const answers = simplify
 					? simplifyAnswers(data.answers)
