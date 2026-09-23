@@ -1,8 +1,14 @@
 # @n3ndor/n8n-nodes-typesafe-jev
 
+[![npm](https://img.shields.io/npm/v/@n3ndor/n8n-nodes-typesafe-jev)](https://www.npmjs.com/package/@n3ndor/n8n-nodes-typesafe-jev)
+
 An n8n community node for [TypeSafe Jev](https://typesafe.ai), the TypeSafe System One model for fast, structured decisions.
 
 Jev returns typed decisions rather than generated prose. In a single node execution you can ask several independent questions about the same state and get back calibrated probabilities for classification, routing, verification and scoring.
+
+**No runtime dependencies.** The node calls the API over n8n's own HTTP helper rather than through a vendor SDK, so installing it adds one package and no transitive tree of its own. That is also a hard requirement for n8n verification, which does not permit runtime dependencies.
+
+Every release from 0.4.0 on is published from GitHub Actions with an npm provenance attestation, so the tarball can be traced to the commit and workflow that built it. Check it with `npm audit signatures`.
 
 > Unofficial and community-maintained. Not affiliated with, endorsed by, or supported by TypeSafe.
 
