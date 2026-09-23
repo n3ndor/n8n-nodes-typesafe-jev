@@ -1,0 +1,33 @@
+# Runs the n8n community package scanner, the same automated pre check the
+# Creator Portal applies to a submission.
+#
+# This exists as a workflow rather than a local command because the scanner
+# cannot run on Windows: it hands a Windows path to `tar` with the separators
+# escaped, tar cannot open it, and the run fails while reporting the cause as
+# an unreachable source repository. On Linux it works.
+#
+# Run it from the Actions tab, or:
+#   gh workflow run scan.yml -f package=@n3ndor/n8n-nodes-typesafe-jev@0.4.0
+
+name: Scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Package spec to scan, name or name@version'
+        required: true
+        default: '@n3ndor/n8n-nodes-typesafe-jev'
+
+jobs:
+  scan:
+    name: Community package scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+
+      - name: Scan
+        run: npx --yes @n8n/scan-community-package@beta "${{ inputs.package }}"
